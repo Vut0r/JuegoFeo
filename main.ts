@@ -20,7 +20,7 @@ const configObject : Phaser.Types.Core.GameConfig = {
         preloadAssets,
         PlayGame
     ],
-    physics : {                                                                             
+    physics : {
         default : 'arcade'
     }
 }
