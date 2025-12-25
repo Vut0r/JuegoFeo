@@ -1,0 +1,13 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    /* Lex Luthor be like: */
+    background-color: #1A1A1A;
+}
+
+canvas {
+    touch-action: none;
+}
