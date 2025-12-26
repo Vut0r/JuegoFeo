@@ -1,4 +1,4 @@
-import { preloadAssets } from './scenes/preloadAssets.ts';
+import { preloadAssets } from './scenes/preloadAssets';
 import { PlayGame } from './scenes/playGame';
 import { gameOptions } from './gameOptions';
 
@@ -14,6 +14,7 @@ const scaleObject : Phaser.Types.Core.ScaleConfig = {
 // game configuration object
 const configObject : Phaser.Types.Core.GameConfig = { 
     type            : Phaser.AUTO,
+    input           : { gamepad: true },
     backgroundColor : gameOptions.gameBackgroundColor,
     scale           : scaleObject,
     scene           : [

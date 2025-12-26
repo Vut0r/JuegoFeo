@@ -31,13 +31,15 @@ export class PlayGame extends Phaser.Scene {
         });
 
         // gamepad hookup: capture first connected pad (if any) and listen for connections
-        const gamepadPlugin : Phaser.Input.Gamepad.GamepadPlugin = this.input.gamepad as Phaser.Input.Gamepad.GamepadPlugin;
-        this.gamepad = gamepadPlugin.gamepads[0] || null;
-        gamepadPlugin.on('connected', (pad : Phaser.Input.Gamepad.Gamepad) => {
-            if (!this.gamepad) {
-                this.gamepad = pad;
-            }
-        });
+        const gamepadPlugin = (this.input as any).gamepad as Phaser.Input.Gamepad.GamepadPlugin | undefined;
+            if (gamepadPlugin) {
+                this.gamepad = gamepadPlugin.gamepads[0] || null;
+                gamepadPlugin.on('connected', (pad: Phaser.Input.Gamepad.Gamepad) => {
+                    if (!this.gamepad) this.gamepad = pad;
+                });
+                } else {
+                    this.gamepad = null;
+        }
 
         // set outer rectangle and inner rectangle; enemy spawn area is between these rectangles
         const outerRectangle : Phaser.Geom.Rectangle = new Phaser.Geom.Rectangle(-100, -100, gameOptions.gameSize.width + 200, gameOptions.gameSize.height + 200);
@@ -45,7 +47,7 @@ export class PlayGame extends Phaser.Scene {
 
         // timer event to add enemies
         this.time.addEvent({
-            delay       : gameOptions.enemyRate,
+            delay       : gameOptions.enemySpawnRate,
             loop        : true,
             callback    : () => {
                 const spawnPoint : Phaser.Geom.Point = Phaser.Geom.Rectangle.RandomOutside(outerRectangle, innerRectangle);
