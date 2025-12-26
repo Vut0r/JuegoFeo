@@ -12,10 +12,13 @@ export class preloadAssets extends Phaser.Scene {
         this.load.image('enemy', 'assets/sprites/enemy.png');
         this.load.image('bullet', 'assets/sprites/bullet.png');
         this.load.image('xpShard', 'assets/sprites/xpShard.png');
+        this.load.image('logo', 'assets/logo.png');
+        this.load.image('playButton', 'assets/playButton.png');
+        this.load.image('fondo', 'assets/fondo.png');
     }
 
     create(): void {
 
-        this.scene.start('PlayGame');
+        this.scene.start('startMenu');
     }
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { preloadAssets } from './scenes/preloadAssets';
 import { PlayGame } from './scenes/playGame';
 import { gameOptions } from './gameOptions';
+import { startMenu } from './scenes/startMenu';
 
 // Initialize Scale Manager
 const scaleObject : Phaser.Types.Core.ScaleConfig = {
@@ -20,6 +21,7 @@ const configObject : Phaser.Types.Core.GameConfig = {
     scale           : scaleObject,
     scene           : [
         preloadAssets,
+        startMenu,
         PlayGame
     ],
     physics : {
