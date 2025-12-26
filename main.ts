@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { preloadAssets } from './scenes/preloadAssets';
 import { PlayGame } from './scenes/playGame';
 import { gameOptions } from './gameOptions';

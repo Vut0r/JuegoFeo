@@ -5,11 +5,5 @@ export const gameOptions : any = {
         height: 1080
     },
 
-    gameBackfieldColor: 0x1A1A1A,
-
-    playerSpeed: 100,
-    enemySpeed: 50,
-    bulletSpeed: 400,
-    bulletRate: 1000,
-    enemySpawnRate: 800
+    gameBackgroundColor: 0x1A1A1A
 }
