@@ -21,3 +21,5 @@ ToDo:
 * Start working on a better UI.
 * Level up based on stats/weapons.
 * Special abilities for each character.
+
+Open to suggestions.
