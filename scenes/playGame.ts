@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import { gameOptions } from "../gameOptions";
 import { player } from "../entities/player";
-import { enemy } from "../entities/enemy";
+import { enemy as enemyConfig } from "../entities/enemy";
 import { weapon } from "../entities/weapon";
 import { xpShard } from "../entities/xpShard";
+import { uiOverlay } from "./uiOverlay";
 
 export class PlayGame extends Phaser.Scene {
 
@@ -18,6 +19,7 @@ export class PlayGame extends Phaser.Scene {
     player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     enemyGroup!: Phaser.Physics.Arcade.Group;
     xpShardGroup!: Phaser.Physics.Arcade.Group;
+    uiScene!: uiOverlay;
     
     create() : void {
 
@@ -26,6 +28,13 @@ export class PlayGame extends Phaser.Scene {
         this.enemyGroup = this.physics.add.group();
         const weaponGroup : Phaser.Physics.Arcade.Group = this.physics.add.group();
         this.xpShardGroup = this.physics.add.group();
+
+        // ensure the UI overlay scene is launched and on top before accessing its objects
+        if (!this.scene.isActive('uiOverlay')) {
+            this.scene.launch('uiOverlay');
+        }
+        this.uiScene = this.scene.get('uiOverlay') as uiOverlay;
+        this.scene.bringToTop('uiOverlay');
 
         // set keyboard controls
         const keyboard : Phaser.Input.Keyboard.KeyboardPlugin = this.input.keyboard as Phaser.Input.Keyboard.KeyboardPlugin; 
@@ -53,18 +62,45 @@ export class PlayGame extends Phaser.Scene {
 
         // timer event to add enemies
         this.time.addEvent({
-            delay       : enemy.spawnRate,
+            delay       : enemyConfig.spawnRate,
             loop        : true,
             callback    : () => {
                 const spawnPoint : Phaser.Geom.Point = Phaser.Geom.Rectangle.RandomOutside(outerRectangle, innerRectangle);
-                const enemy : Phaser.Types.Physics.Arcade.SpriteWithDynamicBody = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'enemy'); 
-                this.enemyGroup.add(enemy); 
+                const enemyEntity: any = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'enemy');
+
+                // determine elite spawn using configured probability
+                const eliteProb = (enemyConfig.spawn && typeof enemyConfig.spawn.eliteProbability === 'number') ? enemyConfig.spawn.eliteProbability : 10;
+                const eliteMultiplier = (enemyConfig.spawn && typeof enemyConfig.spawn.eliteMultiplier === 'number') ? enemyConfig.spawn.eliteMultiplier : 2;
+                const isElite = Phaser.Math.Between(1, 100) <= eliteProb;
+
+                if (isElite) {
+                    //For elites, we apply a glowing tint and scale up their stats
+                    enemyEntity.setTint(0xffd700);
+
+                    const stats = enemyConfig.elite(eliteMultiplier);
+                    enemyEntity.speed = stats.speed;
+                    enemyEntity.damage = stats.damage;
+                    enemyEntity.maxHealth = stats.health;
+                    enemyEntity.health = stats.health;
+                    enemyEntity.shardBonus = stats.shardBonus;
+                    enemyEntity.setData('isElite', true);
+                } else {
+                    enemyEntity.setTint(0xff00ff);
+                    enemyEntity.speed = enemyConfig.stats.speed;
+                    enemyEntity.damage = enemyConfig.stats.damage;
+                    enemyEntity.maxHealth = enemyConfig.stats.health;
+                    enemyEntity.health = enemyConfig.stats.health;
+                    enemyEntity.shardBonus = enemyConfig.stats.shardBonus;
+                    enemyEntity.setData('isElite', false);
+                }
+
+                this.enemyGroup.add(enemyEntity);
             },
         });
 
         // timer event to fire bullets
         this.time.addEvent({
-            delay       : player.atkSpeed,
+            delay       : player.baseStats.atkSpeed,
             loop        : true,
             callback    : () => {
                 const closestEnemy : any = this.physics.closest(this.player, this.enemyGroup.getMatching('visible', true));
@@ -77,31 +113,50 @@ export class PlayGame extends Phaser.Scene {
         });
 
         // projectile Vs enemy collision
-        this.physics.add.collider(weaponGroup, this.enemyGroup, (projectile : any, enemy : any) => {
-            
-            // hide projectile and enemy
+        this.physics.add.collider(weaponGroup, this.enemyGroup, (projectile : any, enemyObj : any) => {
+
+            // destroy projectile
             weaponGroup.killAndHide(projectile);
             projectile.body.checkCollision.none = true;
-            this.enemyGroup.killAndHide(enemy);
-            enemy.body.checkCollision.none = true;
 
-            // spawn xp shard at enemy position
-            const shardSprite : Phaser.Types.Physics.Arcade.SpriteWithDynamicBody = this.physics.add.sprite(enemy.x, enemy.y, 'xpShard');
-            this.xpShardGroup.add(shardSprite);
+            // apply damage to this enemy instance
+            enemyObj.health = (typeof enemyObj.health === 'number') ? enemyObj.health - player.baseStats.damage : (enemyObj.maxHealth || (enemyConfig.stats && enemyConfig.stats.health) || 0) - player.baseStats.damage;
+
+            // if enemy died, award score, hide and spawn shard
+            if (enemyObj.health <= 0) {
+                if (this.uiScene && typeof this.uiScene.addScore === 'function') {
+                    this.uiScene.addScore(1);
+                } else {
+                    const uiScene = this.scene.get('uiOverlay') as uiOverlay;
+                    if (uiScene && typeof uiScene.addScore === 'function') uiScene.addScore(1);
+                }
+
+                this.enemyGroup.killAndHide(enemyObj);
+                enemyObj.body.checkCollision.none = true;
+                enemyObj.health = (enemyObj.maxHealth !== undefined) ? enemyObj.maxHealth : ((enemyConfig.stats && enemyConfig.stats.health) || enemyObj.health || 0);
+
+                const shardSprite : Phaser.Types.Physics.Arcade.SpriteWithDynamicBody = this.physics.add.sprite(enemyObj.x, enemyObj.y, 'xpShard');
+                this.xpShardGroup.add(shardSprite);
+                return;
+            }
         });
 
-        // player Vs enemy collision
-        this.physics.add.collider(this.player, this.enemyGroup, () => {
-            player.reset();
-            this.scene.restart();
+        // player Vs enemy collision health calculation
+        this.physics.add.collider(this.player, this.enemyGroup, (playerObj: any, enemyObj: any) => {
+            player.baseStats.health -= ((enemyObj.damage || enemyConfig.stats.damage) - player.baseStats.defense);
+            if (player.baseStats.health <= 0) {
+                console.log('Game Over');
+                player.baseStats.health = player.baseStats.maxHealth;
+                this.scene.start('startMenu');
+            }
         });
         
         //player Vs xpShard collision
         this.physics.add.collider(this.player, this.xpShardGroup, (playerObj : any, shardSprite : any) => {
             this.xpShardGroup.killAndHide(shardSprite);
             shardSprite.body.checkCollision.none = true;
-            player.xp += xpShard.value * player.xpModifier;
-            console.log('Player XP: ' + player.xp);
+            player.baseStats.xp += xpShard.value * player.baseStats.xpModifier;
+            console.log('Player XP: ' + player.baseStats.xp);
         });
     }
 
@@ -136,14 +191,14 @@ export class PlayGame extends Phaser.Scene {
         // set player velocity according to movement direction
         this.player.setVelocity(0, 0);
         if (usingGamepad) {
-            this.player.setVelocity(movementDirection.x * player.speed, movementDirection.y * player.speed);
+            this.player.setVelocity(movementDirection.x * player.baseStats.speed, movementDirection.y * player.baseStats.speed);
         }
         else {
             if (movementDirection.x == 0 || movementDirection.y == 0) {
-                this.player.setVelocity(movementDirection.x * player.speed, movementDirection.y * player.speed);
+                this.player.setVelocity(movementDirection.x * player.baseStats.speed, movementDirection.y * player.baseStats.speed);
             }
             else {
-                this.player.setVelocity(movementDirection.x * player.speed / Math.sqrt(2), movementDirection.y * player.speed / Math.sqrt(2));    
+                this.player.setVelocity(movementDirection.x * player.baseStats.speed / Math.sqrt(2), movementDirection.y * player.baseStats.speed / Math.sqrt(2));    
             }
         }
 
@@ -153,18 +208,21 @@ export class PlayGame extends Phaser.Scene {
         });
 
         //level up conditions
-        if (player.xp >= player.levelUp) {
-            player.xp -= player.levelUp;
-            player.levelUp = Math.floor(player.levelUp * 1.5);
-            player.health += 20;
-            player.damage += 5;
-            player.speed += 10;
-            player.atkSpeed *= 0.8;
+        if (player.baseStats.xp >= player.baseStats.levelUpReq) {
+            player.baseStats.xp -= player.baseStats.levelUpReq;
+            player.baseStats.levelUpReq = Math.floor(player.baseStats.levelUpReq * 1.5);
+            const uplevelplayer = player.levelUP();
+            player.baseStats.speed = uplevelplayer.speed;
+            player.baseStats.defense = uplevelplayer.defense;
+            player.baseStats.damage = uplevelplayer.damage;
+            player.baseStats.atkSpeed = uplevelplayer.atkSpeed;
+            player.baseStats.health = uplevelplayer.health;
+            player.baseStats.maxHealth = uplevelplayer.maxHealth;
             console.log('level up! New stats: ' +
-                'Health: ' + player.health +
-                ', Damage: ' + player.damage +
-                ', Speed: ' + player.speed +
-                ', Attack Speed: ' + player.atkSpeed
+                'Health: ' + player.baseStats.health +
+                ', Damage: ' + player.baseStats.damage +
+                ', Speed: ' + player.baseStats.speed +
+                ', Attack Speed: ' + player.baseStats.atkSpeed
             );
         }
     }

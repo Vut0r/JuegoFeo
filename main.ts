@@ -3,6 +3,7 @@ import { preloadAssets } from './scenes/preloadAssets';
 import { PlayGame } from './scenes/playGame';
 import { gameOptions } from './gameOptions';
 import { startMenu } from './scenes/startMenu';
+import { uiOverlay } from './scenes/uiOverlay';
 
 // Initialize Scale Manager
 const scaleObject : Phaser.Types.Core.ScaleConfig = {
@@ -22,7 +23,8 @@ const configObject : Phaser.Types.Core.GameConfig = {
     scene           : [
         preloadAssets,
         startMenu,
-        PlayGame
+        PlayGame,
+        uiOverlay
     ],
     physics : {
         default : 'arcade'

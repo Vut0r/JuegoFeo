@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { PlayGame } from './playGame';
+import { uiOverlay } from "./uiOverlay";
 
 export class startMenu extends Phaser.Scene {
     
@@ -9,6 +10,8 @@ export class startMenu extends Phaser.Scene {
         });
     }
 
+    uioverlayScene!: uiOverlay;
+
     create() : void {
 
         this.add.image(0, 0, 'fondo').setOrigin(0).setDepth(0);
@@ -17,6 +20,10 @@ export class startMenu extends Phaser.Scene {
         
         playButton.setInteractive();
         playButton.on('pointerdown', () => {
+            this.uioverlayScene = this.scene.get('uiOverlay') as uiOverlay;
+            if (this.uioverlayScene) {
+                this.uioverlayScene.resetScore();
+            }
             this.scene.start('PlayGame');
         });
         playButton.on('pointerover', () => {
