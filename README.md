@@ -1,5 +1,6 @@
 # JuegoFeo
 
+Creado con Phaser.io y TypeScript. Aun viendo si se implementa Strudel.
 La verdad es el primer test de un juego que ya tenia de proyecto realizar. Esto es mas como un reto personal que como algo serio pero en serio quiero que esto salga bien.
 
 ToDo:
@@ -12,6 +13,7 @@ ToDo:
 
 ---
 
+Created with Phaser.io and Typescript. Checking if we can implement Strudel.
 Honestly, this is the first test of a game I've had in mind for a while. It's more of a personal challenge than a serious project, but I really want this to turn out well.
 
 ToDo:
