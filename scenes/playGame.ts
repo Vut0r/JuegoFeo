@@ -34,6 +34,7 @@ export class PlayGame extends Phaser.Scene {
             this.scene.launch('uiOverlay');
         }
         this.uiScene = this.scene.get('uiOverlay') as uiOverlay;
+        if (this.uiScene && typeof this.uiScene.loadBars === 'function') this.uiScene.loadBars();
         this.scene.bringToTop('uiOverlay');
 
         // set keyboard controls
@@ -136,7 +137,12 @@ export class PlayGame extends Phaser.Scene {
                 enemyObj.health = (enemyObj.maxHealth !== undefined) ? enemyObj.maxHealth : ((enemyConfig.stats && enemyConfig.stats.health) || enemyObj.health || 0);
 
                 const shardSprite : Phaser.Types.Physics.Arcade.SpriteWithDynamicBody = this.physics.add.sprite(enemyObj.x, enemyObj.y, 'xpShard');
+                // assign xp amount to the shard so pickups can read the correct value
+                (shardSprite as any).xpAmount = (typeof enemyObj.shardBonus === 'number') ? xpShard.value + enemyObj.shardBonus : xpShard.value;
+                (shardSprite as any).shardBonus = enemyObj.shardBonus || 0;
                 this.xpShardGroup.add(shardSprite);
+                // refresh xp bar immediately
+                if (this.uiScene && typeof this.uiScene.xpBar === 'function') this.uiScene.xpBar();
                 return;
             }
         });
@@ -147,16 +153,18 @@ export class PlayGame extends Phaser.Scene {
             if (player.baseStats.health <= 0) {
                 console.log('Game Over');
                 player.baseStats.health = player.baseStats.maxHealth;
+                if (this.uiScene && typeof this.uiScene.unloadBars === 'function') this.uiScene.unloadBars();
                 this.scene.start('startMenu');
             }
         });
         
-        //player Vs xpShard collision
-        this.physics.add.collider(this.player, this.xpShardGroup, (playerObj : any, shardSprite : any) => {
-            this.xpShardGroup.killAndHide(shardSprite);
-            shardSprite.body.checkCollision.none = true;
-            player.baseStats.xp += xpShard.value * player.baseStats.xpModifier;
-            console.log('Player XP: ' + player.baseStats.xp);
+        // if xpShard collision, sum the xp, hide and spawn shard and show on overlay
+        this.physics.add.overlap(this.player, this.xpShardGroup, (playerObj: any, shardObj: any) => {
+            const amount = (typeof (shardObj as any).xpAmount === 'number') ? (shardObj as any).xpAmount : (xpShard.value || 0);
+            player.baseStats.xp = (typeof player.baseStats.xp === 'number') ? player.baseStats.xp + amount : amount;
+            this.xpShardGroup.killAndHide(shardObj);
+            shardObj.body.checkCollision.none = true;
+            if (this.uiScene && typeof this.uiScene.xpBar === 'function') this.uiScene.xpBar();
         });
     }
 
